@@ -8,8 +8,8 @@ use std::time::Duration;
 use iced::Alignment::Center;
 use iced::keyboard::key;
 use iced::widget::{
-    button, center, column, container, horizontal_rule, horizontal_space, image, row, text,
-    text_input, vertical_space,
+    PickList, button, center, column, container, horizontal_rule, horizontal_space, image, row,
+    text, text_input, vertical_space,
 };
 use iced::{
     Color, Element, Event, Length, Pixels, Subscription, Task, Theme, event, keyboard, time,
@@ -116,7 +116,11 @@ enum Message {
     /// First value: weather data, second value: error text
     WeatherDataReceived((Option<WeatherData>, Option<String>)),
 
+    APIKeyChanged(String),
+    ThemeChanged(Theme),
+
     AboutButtonPressed,
+    SettingsButtonPressed,
     PoweroffButtonPressed,
 
     RestartSystem,
@@ -134,11 +138,18 @@ enum Message {
 enum ModalWindow {
     LocationSelector,
     About,
-    // Settings,
+    Settings,
     PowerOff,
 }
 
 impl Ice {
+    const THEMES: [Theme; 4] = [
+        Theme::Dark,
+        Theme::Light,
+        Theme::GruvboxLight,
+        Theme::GruvboxDark,
+    ];
+
     fn theme(&self) -> Theme {
         self.theme.clone()
     }
@@ -209,6 +220,10 @@ impl Ice {
                 self.set_modal_win(ModalWindow::About);
                 Task::none()
             }
+            Message::SettingsButtonPressed => {
+                self.set_modal_win(ModalWindow::Settings);
+                Task::none()
+            }
             Message::PoweroffButtonPressed => {
                 self.set_modal_win(ModalWindow::PowerOff);
                 Task::none()
@@ -228,6 +243,14 @@ impl Ice {
             Message::ExitProgramm => sys::exit_prog(),
             Message::TickUptime => {
                 self.uptime += 1;
+                Task::none()
+            }
+            Message::APIKeyChanged(key) => {
+                self._conf.api_key = key;
+                Task::none()
+            }
+            Message::ThemeChanged(theme) => {
+                self.theme = theme;
                 Task::none()
             }
             Message::Event(event) => match event {
@@ -283,6 +306,24 @@ impl Ice {
                 .width((WIN_WIDTH / 1.5) as u16),
             Message::PoweroffButtonPressed,
         )
+        .into()
+    }
+
+    fn settings(&self) -> Element<Message> {
+        let theme_selector = PickList::new(Self::THEMES, Some(&self.theme), Message::ThemeChanged);
+        let api_key_input = text_input("Введите ключ API сюда...", &self._conf.api_key)
+            .on_input(Message::APIKeyChanged);
+
+        column![
+            row![text("Тема интерфейса:"), horizontal_space(), theme_selector,]
+                .spacing(5)
+                .align_y(Center),
+            row![text("Ключ API:"), api_key_input,]
+                .spacing(5)
+                .align_y(Center),
+        ]
+        .width((WIN_WIDTH / 2.) as u16)
+        .spacing(5)
         .into()
     }
 
@@ -359,7 +400,9 @@ impl Ice {
                 button(image("res/icons/about.png").width(20).height(20))
                     .on_press(Message::AboutButtonPressed)
                     .style(button::text),
-                button(image("res/icons/settings.png").width(20).height(20)).style(button::text),
+                button(image("res/icons/settings.png").width(20).height(20))
+                    .on_press(Message::SettingsButtonPressed)
+                    .style(button::text),
                 button(image("res/icons/power_off.png").width(20).height(20))
                     .on_press(Message::PoweroffButtonPressed)
                     .style(button::text),
@@ -404,6 +447,11 @@ impl Ice {
                     weather_area,
                     about(Message::AboutButtonPressed),
                     Message::AboutButtonPressed,
+                ),
+                ModalWindow::Settings => modal(
+                    weather_area,
+                    self.settings(),
+                    Message::SettingsButtonPressed,
                 ),
                 ModalWindow::PowerOff => self.poweroff(weather_area),
             }
