@@ -2,6 +2,8 @@
 
 ice is simple and stupid graphical environment for Raspberry/Orange/etc. Pi written in Rust+iced. Uses Xorg or Wayland.
 
+![](assets/ice.png)
+
 ## Functions
 
 1. Display information about weather in the specified location.
