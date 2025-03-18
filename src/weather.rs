@@ -308,7 +308,7 @@ impl WeatherDescription {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Wind {
     pub deg: u16,
-    pub gust: f32,
+    pub gust: Option<f32>,
     pub speed: f32,
 }
 

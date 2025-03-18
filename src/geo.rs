@@ -3,6 +3,7 @@
 use std::fmt::Display;
 
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::conf::Location;
@@ -36,6 +37,30 @@ impl LocationName {
     pub fn set_country<C: ToString>(mut self, country: C) -> Self {
         self.country = Some(country.to_string());
         self
+    }
+
+    pub fn from_str(name: &str) -> Option<Self> {
+        let chunks = name.split(',').collect::<Vec<_>>();
+        let len = chunks.len();
+
+        match len {
+            1 => Some(Self {
+                city: chunks[0].to_string(),
+                state: None,
+                country: None,
+            }),
+            2 => Some(Self {
+                city: chunks[0].to_string(),
+                state: Some(chunks[1].to_string()),
+                country: None,
+            }),
+            3 => Some(Self {
+                city: chunks[0].to_string(),
+                state: Some(chunks[1].to_string()),
+                country: Some(chunks[2].to_string()),
+            }),
+            _ => None,
+        }
     }
 }
 
@@ -79,4 +104,55 @@ impl Location {
 
         Ok(data)
     }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct LocationData(pub Vec<LocationInfo>);
+
+impl LocationData {
+    pub fn from_json_value(value: Value) -> Result<Self> {
+        let data = serde_json::from_value(value)?;
+
+        Ok(data)
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct LocationInfo {
+    pub name: String,
+    pub local_names: Option<LocalNames>,
+    pub lat: f32,
+    pub lon: f32,
+    pub country: String,
+    pub state: Option<String>,
+}
+
+impl ToString for LocationInfo {
+    fn to_string(&self) -> String {
+        if let Some(state) = &self.state {
+            format!("{} ({}, {})", &self.name, &state, &self.country)
+        } else {
+            format!("{} ({})", &self.name, &self.country)
+        }
+    }
+}
+
+impl PartialEq for LocationInfo {
+    fn eq(&self, other: &Self) -> bool {
+        &self.name == &other.name && &self.country == &other.country && &self.state == &other.state
+    }
+
+    fn ne(&self, other: &Self) -> bool {
+        &self.name != &other.name || &self.country != &other.country || &self.state != &other.state
+    }
+}
+
+impl Eq for LocationInfo {}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct LocalNames {
+    pub bg: Option<String>,
+    pub de: Option<String>,
+    pub en: Option<String>,
+    pub ru: Option<String>,
 }

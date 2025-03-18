@@ -4,7 +4,6 @@ pub mod widgets;
 
 use std::time::Duration;
 
-// use futures::FutureExt;
 use iced::Alignment::Center;
 use iced::keyboard::key;
 use iced::widget::{
@@ -16,6 +15,7 @@ use iced::{
 };
 
 use crate::conf::{Conf, Location};
+use crate::geo::{LocationData, LocationInfo, LocationName};
 use crate::sys;
 use crate::time::Time;
 use crate::weather::{Weather, WeatherData, get_time};
@@ -68,6 +68,9 @@ struct Ice {
     /// Information about weather
     weather_data: Option<WeatherData>,
 
+    geocoding_data: Option<LocationData>,
+    selected_location: Option<LocationInfo>,
+
     uptime: u32,
 }
 
@@ -93,6 +96,8 @@ impl Default for Ice {
             theme: Theme::Dark,
             modal: None,
             weather_data: None,
+            geocoding_data: None,
+            selected_location: None,
             uptime: 0,
         }
     }
@@ -115,6 +120,12 @@ enum Message {
 
     /// First value: weather data, second value: error text
     WeatherDataReceived((Option<WeatherData>, Option<String>)),
+
+    /// First value: location data, second: error text
+    LocationDataReceived((Option<LocationData>, Option<String>)),
+    LocationSelected(LocationInfo),
+
+    SearchLocationPressed,
 
     APIKeyChanged(String),
     ThemeChanged(Theme),
@@ -176,8 +187,16 @@ impl Ice {
         };
     }
 
+    fn print_error_log(&self) {
+        if let Some(err) = &self.is_err {
+            eprintln!("ERROR: {err}");
+        }
+    }
+
     fn update(&mut self, message: Message) -> Task<Message> {
+        self.print_error_log();
         let conf = self._conf.clone();
+        let location_str = self.location_str.clone();
 
         match message {
             Message::LocationSelectorPressed => {
@@ -192,12 +211,9 @@ impl Ice {
                 async move {
                     let data = Weather::new(
                         Location {
-                            // lat: 56.2414,
-                            // lon: 43.4554,
                             lat: conf.location.lat,
                             lon: conf.location.lon,
                         },
-                        // "26896f0fe821b98790eeae3a316f3358",
                         &conf.api_key,
                     )
                     .set_units(crate::conf::Units::Metric)
@@ -211,10 +227,43 @@ impl Ice {
                 },
                 |val| Message::WeatherDataReceived(val),
             ),
+            Message::SearchLocationPressed => Task::perform(
+                async move {
+                    let data = LocationName::from_str(&location_str)
+                        .unwrap_or(LocationName::new("Dzerzhinsk"))
+                        .get(&conf.api_key)
+                        .await;
+
+                    match data {
+                        Ok(value) => (Some(LocationData::from_json_value(value).unwrap()), None),
+                        Err(why) => (None, Some(why.to_string())),
+                    }
+                },
+                |val| Message::LocationDataReceived(val),
+            ),
             Message::WeatherDataReceived(value) => {
                 (self.weather_data, self.is_err) = value;
 
                 Task::none()
+            }
+            Message::LocationDataReceived(value) => {
+                (self.geocoding_data, self.is_err) = value;
+
+                Task::none()
+            }
+            Message::LocationSelected(location) => {
+                (self._conf.location.lat, self._conf.location.lon) = (location.lat, location.lon);
+                self.selected_location = Some(location);
+
+                // Cleanup
+                self.location_str = String::new();
+                self.geocoding_data = None;
+
+                // Close this modal window
+                self.set_modal_win(ModalWindow::LocationSelector);
+
+                // Task::none()
+                self.update(Message::RefreshButtonPressed) // needed for autorefresh weather data
             }
             Message::AboutButtonPressed => {
                 self.set_modal_win(ModalWindow::About);
@@ -327,6 +376,43 @@ impl Ice {
         .into()
     }
 
+    fn location_selector<'a>(&self) -> Element<'a, Message> {
+        let input = row![
+            text_input("Введите ваше местоположение сюда...", &self.location_str)
+                .on_input(Message::LocationNameEntered),
+            button("Поиск").on_press(Message::SearchLocationPressed),
+        ]
+        .spacing(5);
+
+        let results = match &self.geocoding_data {
+            Some(res) => {
+                let results = PickList::new(
+                    res.0.clone(),
+                    self.selected_location.clone(),
+                    Message::LocationSelected,
+                );
+
+                Some(
+                    row![
+                        text("Выберите местоположение:"),
+                        horizontal_space(),
+                        results,
+                    ]
+                    .spacing(5)
+                    .align_y(Center),
+                )
+            }
+            None => None,
+        };
+
+        let mut content = column![input].spacing(5);
+        if let Some(results) = results {
+            content = content.push(results);
+        }
+
+        container(content).width((WIN_WIDTH / 1.3) as u16).into()
+    }
+
     fn weather_info<'a>(&self, weather: &'a WeatherData) -> Element<'a, Message> {
         let weather_icon = weather.weather[0].main.get_icon().unwrap_or_default();
         let weather_type = weather.weather[0].get_descr();
@@ -351,7 +437,13 @@ impl Ice {
         kv_weather.add_item_with_units("Ветер:", floor(weather.wind.speed), " м/с");
         let kv = kv_weather.view();
 
+        let location_name = text(match &self.selected_location {
+            Some(location) => location.to_string(),
+            None => "Не выбранное/неизвестное местоположение".to_string(),
+        });
+
         center(container(column![
+            location_name,
             center(
                 column![
                     vertical_space(),
@@ -388,10 +480,6 @@ impl Ice {
     }
 
     fn view(&self) -> Element<Message> {
-        if let Some(err) = &self.is_err {
-            eprintln!("{err}");
-        }
-
         let btn = container(
             row![
                 button("Местоположение").on_press(Message::LocationSelectorPressed),
@@ -431,16 +519,7 @@ impl Ice {
             match modal_win {
                 ModalWindow::LocationSelector => modal(
                     weather_area,
-                    container(
-                        row![
-                            text_input("Введите ваше местоположение сюда...", &self.location_str)
-                                .on_input(Message::LocationNameEntered),
-                            button("Поиск").on_press(Message::LocationSelectorPressed),
-                        ]
-                        .spacing(5),
-                    )
-                    .width((WIN_WIDTH / 1.5) as u16)
-                    .height((WIN_HEIGHT / 1.3) as u16),
+                    self.location_selector(),
                     Message::LocationSelectorPressed,
                 ),
                 ModalWindow::About => modal(

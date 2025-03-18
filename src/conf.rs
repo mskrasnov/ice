@@ -40,13 +40,19 @@ impl ToString for Units {
 }
 
 /// Location from which weather information is to be obtained
-#[derive(Debug, Deserialize, Serialize, Default, Clone)]
+#[derive(Debug, Deserialize, Serialize, Default, Clone, Copy, PartialEq)]
 pub struct Location {
     /// Latitude
     pub lat: f32,
 
     /// Longitude
     pub lon: f32,
+}
+
+impl ToString for Location {
+    fn to_string(&self) -> String {
+        format!("{},{}", self.lat, self.lon)
+    }
 }
 
 impl Conf {
