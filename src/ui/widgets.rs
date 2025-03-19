@@ -41,16 +41,24 @@ impl KeyValueView {
             .push((key.to_string(), val.to_string(), Some(units.to_string())));
     }
 
-    pub fn view<'a, Message>(&self) -> iced::widget::Row<'a, Message>
+    fn get_scaled_color(&self, is_dark: bool) -> Color {
+        if is_dark { Color::WHITE } else { Color::BLACK }.scale_alpha(0.5)
+    }
+
+    pub fn view<'a, Message>(&self, is_dark: bool) -> iced::widget::Row<'a, Message>
     where
         Message: 'a + Clone,
     {
+        let scaled = self.get_scaled_color(is_dark);
+
         let mut keys = column![].spacing(5).align_x(Right);
         let mut vals = column![].spacing(5);
+
         for kv in self.kv_store.clone().into_iter() {
-            keys = keys.push(text(kv.0).style(|_| text::Style {
-                color: Some(Color::WHITE.scale_alpha(0.5)),
+            keys = keys.push(text(kv.0).style(move |_| text::Style {
+                color: Some(scaled.clone()),
             }));
+
             if let Some(units) = kv.2 {
                 vals = vals.push(text(format!("{}{}", kv.1, units)));
             } else {
