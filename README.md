@@ -1,6 +1,6 @@
 # ice
 
-ice is simple and stupid graphical environment for Raspberry/Orange/etc. Pi written in Rust+iced. Uses Xorg or Wayland.
+ice is simple and stupid full-screen program to get information about weather in the specified location. Originally written for my OrangePi 3 LTS SBC.
 
 ![](assets/ice.png)
 
