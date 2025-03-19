@@ -1,15 +1,13 @@
 //! Perform system actions
 
-use std::process::{Command, exit};
 use anyhow::Result;
+use std::process::{Command, exit};
 
 const POWEROFF_PATH: &str = "/sbin/poweroff";
 const REBOOT_PATH: &str = "/sbin/reboot";
 
 fn run_prog(prog_path: &str) -> Result<i32> {
-    let code = Command::new(prog_path)
-        .status()?
-        .code();
+    let code = Command::new(prog_path).status()?.code();
 
     Ok(code.unwrap_or(0))
 }
