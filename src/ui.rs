@@ -1,5 +1,6 @@
 //! User interface based on [iced](https://iced.rs)
 
+pub mod modal;
 pub mod widgets;
 
 use std::time::Duration;
@@ -45,7 +46,7 @@ struct Ice {
     /// `Ice::default()` method parses the configuration file that defined in
     /// the `CONF_PATH` constant. If error return default value, if success -
     /// parsed data.
-    _conf: Conf,
+    conf: Conf,
 
     /// Location name in the human format. The location name is entered in
     /// the appropriate field, and then this value is used to convert to the
@@ -90,7 +91,7 @@ impl Default for Ice {
         };
 
         Self {
-            _conf: conf,
+            conf,
             is_err,
             location_str: String::new(),
             theme: Theme::Dark,
@@ -154,13 +155,6 @@ enum ModalWindow {
 }
 
 impl Ice {
-    const THEMES: [Theme; 4] = [
-        Theme::Dark,
-        Theme::Light,
-        Theme::GruvboxLight,
-        Theme::GruvboxDark,
-    ];
-
     fn theme(&self) -> Theme {
         self.theme.clone()
     }
@@ -195,7 +189,7 @@ impl Ice {
 
     fn update(&mut self, message: Message) -> Task<Message> {
         self.print_error_log();
-        let conf = self._conf.clone();
+        let conf = self.conf.clone();
         let location_str = self.location_str.clone();
 
         match message {
@@ -252,7 +246,7 @@ impl Ice {
                 Task::none()
             }
             Message::LocationSelected(location) => {
-                (self._conf.location.lat, self._conf.location.lon) = (location.lat, location.lon);
+                (self.conf.location.lat, self.conf.location.lon) = (location.lat, location.lon);
                 self.selected_location = Some(location);
 
                 // Cleanup
@@ -295,7 +289,7 @@ impl Ice {
                 Task::none()
             }
             Message::APIKeyChanged(key) => {
-                self._conf.api_key = key;
+                self.conf.api_key = key;
                 Task::none()
             }
             Message::ThemeChanged(theme) => {
@@ -310,10 +304,10 @@ impl Ice {
                     async move {
                         let data = Weather::new(
                             Location {
-                                lat: 56.2414,
-                                lon: 43.4554,
+                                lat: conf.location.lat,
+                                lon: conf.location.lon,
                             },
-                            "26896f0fe821b98790eeae3a316f3358",
+                            &conf.api_key,
                         )
                         .set_units(crate::conf::Units::Metric)
                         .get()
@@ -359,8 +353,8 @@ impl Ice {
     }
 
     fn settings(&self) -> Element<Message> {
-        let theme_selector = PickList::new(Self::THEMES, Some(&self.theme), Message::ThemeChanged);
-        let api_key_input = text_input("Введите ключ API сюда...", &self._conf.api_key)
+        let theme_selector = PickList::new(Theme::ALL, Some(&self.theme), Message::ThemeChanged);
+        let api_key_input = text_input("Введите ключ API сюда...", &self.conf.api_key)
             .on_input(Message::APIKeyChanged);
 
         column![
@@ -378,8 +372,12 @@ impl Ice {
 
     fn location_selector<'a>(&self) -> Element<'a, Message> {
         let input = row![
-            text_input("Введите ваше местоположение сюда...", &self.location_str)
-                .on_input(Message::LocationNameEntered),
+            text_input(
+                "Введите ваше местоположение сюда и нажмите Enter...",
+                &self.location_str
+            )
+            .on_submit(Message::SearchLocationPressed)
+            .on_input(Message::LocationNameEntered),
             button("Поиск").on_press(Message::SearchLocationPressed),
         ]
         .spacing(5);
@@ -413,6 +411,15 @@ impl Ice {
         container(content).width((WIN_WIDTH / 1.3) as u16).into()
     }
 
+    fn get_scaled_color(&self) -> Color {
+        if self.theme.extended_palette().is_dark {
+            Color::WHITE
+        } else {
+            Color::BLACK
+        }
+        .scale_alpha(0.5)
+    }
+
     fn weather_info<'a>(&self, weather: &'a WeatherData) -> Element<'a, Message> {
         let weather_icon = weather.weather[0].main.get_icon().unwrap_or_default();
         let weather_type = weather.weather[0].get_descr();
@@ -435,12 +442,14 @@ impl Ice {
             get_time(weather.sys.sunset, weather.timezone).format("%H:%M"),
         );
         kv_weather.add_item_with_units("Ветер:", floor(weather.wind.speed), " м/с");
-        let kv = kv_weather.view();
+        let kv = kv_weather.view(self.theme.extended_palette().is_dark);
 
         let location_name = text(match &self.selected_location {
             Some(location) => location.to_string(),
             None => "Не выбранное/неизвестное местоположение".to_string(),
         });
+
+        let scaled = self.get_scaled_color();
 
         center(container(column![
             location_name,
@@ -465,14 +474,14 @@ impl Ice {
             row![
                 text("Информация предоставлена OpenWeatherMap")
                     .size(10)
-                    .style(|_| text::Style {
-                        color: Some(Color::WHITE.scale_alpha(0.5)),
+                    .style(move |_| text::Style {
+                        color: Some(scaled.clone()),
                     }),
                 horizontal_space(),
                 text(format!("Время работы: {}", Time::from_secs(self.uptime)))
                     .size(10)
-                    .style(|_| text::Style {
-                        color: Some(Color::WHITE.scale_alpha(0.5)),
+                    .style(move |_| text::Style {
+                        color: Some(scaled),
                     }),
             ],
         ]))
