@@ -383,23 +383,25 @@ impl Ice {
         .spacing(5);
 
         let results = match &self.geocoding_data {
-            Some(res) => {
-                let results = PickList::new(
-                    res.0.clone(),
-                    self.selected_location.clone(),
-                    Message::LocationSelected,
-                );
+            Some(res) => Some(
+                if res.0.len() == 0 {
+                    row![text("Данное местоположение не найдено.")]
+                } else {
+                    let results = PickList::new(
+                        res.0.clone(),
+                        self.selected_location.clone(),
+                        Message::LocationSelected,
+                    );
 
-                Some(
                     row![
                         text("Выберите местоположение:"),
                         horizontal_space(),
                         results,
                     ]
-                    .spacing(5)
-                    .align_y(Center),
-                )
-            }
+                }
+                .spacing(5)
+                .align_y(Center),
+            ),
             None => None,
         };
 
