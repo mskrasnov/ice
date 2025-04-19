@@ -355,7 +355,7 @@ impl Ice {
         let buttons = row![
             horizontal_space(),
             button("Отмена").on_press(Message::PoweroffButtonPressed),
-            button("Завершение процесса")
+            button("Выход")
                 .on_press(Message::ExitProgramm)
                 .style(button::success),
             button("Перезапуск")
