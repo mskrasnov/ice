@@ -69,10 +69,17 @@ struct Ice {
     /// Information about weather
     weather_data: Option<WeatherData>,
 
+    /// Information about selected locations
     geocoding_data: Option<LocationData>,
+
+    /// Coordinates of selected location
     selected_location: Option<LocationInfo>,
 
+    /// Program's uptime (in seconds)
     uptime: u32,
+
+    /// Current time
+    ctime: chrono::DateTime<chrono::Local>,
 }
 
 impl Default for Ice {
@@ -100,6 +107,7 @@ impl Default for Ice {
             geocoding_data: None,
             selected_location: None,
             uptime: 0,
+            ctime: chrono::offset::Local::now(),
         }
     }
 }
@@ -134,6 +142,7 @@ enum Message {
     AboutButtonPressed,
     SettingsButtonPressed,
     PoweroffButtonPressed,
+    CloseErrorWinButtonPressed,
 
     RestartSystem,
     PoweroffSystem,
@@ -141,6 +150,9 @@ enum Message {
 
     /// Counts the program run time in seconds
     TickUptime,
+
+    /// Counts the current time
+    TichCtime(chrono::DateTime<chrono::Local>),
 
     /// Some events (by subscription)
     Event(Event),
@@ -152,6 +164,8 @@ enum ModalWindow {
     About,
     Settings,
     PowerOff,
+
+    Error,
 }
 
 impl Ice {
@@ -163,6 +177,8 @@ impl Ice {
         Subscription::batch(vec![
             event::listen().map(Message::Event),
             time::every(Duration::from_secs(1)).map(|_| Message::TickUptime),
+            time::every(Duration::from_secs(1))
+                .map(|_| Message::TichCtime(chrono::offset::Local::now())),
             if self.weather_data.is_none() {
                 // Wait 1 second and try to update weather data
                 // May be used after startup
@@ -181,16 +197,13 @@ impl Ice {
         };
     }
 
-    fn print_error_log(&self) {
-        if let Some(err) = &self.is_err {
-            eprintln!("ERROR: {err}");
-        }
-    }
-
     fn update(&mut self, message: Message) -> Task<Message> {
-        self.print_error_log();
         let conf = self.conf.clone();
         let location_str = self.location_str.clone();
+
+        if self.is_err.is_some() && self.modal.is_none() {
+            self.modal = Some(ModalWindow::Error);
+        }
 
         match message {
             Message::LocationSelectorPressed => {
@@ -267,6 +280,12 @@ impl Ice {
                 self.set_modal_win(ModalWindow::Settings);
                 Task::none()
             }
+            Message::CloseErrorWinButtonPressed => {
+                self.is_err = None;
+                self.set_modal_win(ModalWindow::Error);
+
+                Task::none()
+            }
             Message::PoweroffButtonPressed => {
                 self.set_modal_win(ModalWindow::PowerOff);
                 Task::none()
@@ -286,6 +305,12 @@ impl Ice {
             Message::ExitProgramm => sys::exit_prog(),
             Message::TickUptime => {
                 self.uptime += 1;
+                Task::none()
+            }
+            Message::TichCtime(ctime) => {
+                if ctime != self.ctime {
+                    self.ctime = ctime;
+                }
                 Task::none()
             }
             Message::APIKeyChanged(key) => {
@@ -385,7 +410,7 @@ impl Ice {
         let results = match &self.geocoding_data {
             Some(res) => Some(
                 if res.0.len() == 0 {
-                    row![text("Данное местоположение не найдено.")]
+                    row![text("Местоположение не найдено.")]
                 } else {
                     let results = PickList::new(
                         res.0.clone(),
@@ -411,6 +436,18 @@ impl Ice {
         }
 
         container(content).width((WIN_WIDTH / 1.3) as u16).into()
+    }
+
+    fn error_win(&self) -> Element<Message> {
+        if let Some(err_text) = &self.is_err {
+            let header = text("Ошибка").size(25);
+            let err_text = text(err_text);
+
+            column![header, err_text, row![horizontal_space(), button("ОК").on_press(Message::CloseErrorWinButtonPressed)]].spacing(5)
+        } else {
+            let err_text = text("Ошибки никакой нет, но это окно всё равно открылось...\n\nЭто проделки Сатаны, не иначе.");
+            column![err_text, row![horizontal_space(), button("ОК").on_press(Message::CloseErrorWinButtonPressed),]]
+        }.width(Length::Shrink).height(Length::Shrink).into()
     }
 
     fn get_scaled_color(&self) -> Color {
@@ -448,7 +485,13 @@ impl Ice {
 
         let location_name = text(match &self.selected_location {
             Some(location) => location.to_string(),
-            None => "Не выбранное/неизвестное местоположение".to_string(),
+            None => {
+                format!(
+                    "{name}, {country}",
+                    name = &weather.name,
+                    country = &weather.sys.country
+                )
+            }
         });
 
         let scaled = self.get_scaled_color();
@@ -458,7 +501,12 @@ impl Ice {
             center(
                 column![
                     vertical_space(),
-                    image(format!("res/icons/{}", weather_icon.get_icon_name(&time))),
+                    row![
+                        image(format!("res/icons/{}", weather_icon.get_icon_name(&time))),
+                        text(format!("{}°C", floor(weather.main.feels_like))).size(50),
+                    ]
+                    .align_y(Center)
+                    .spacing(20),
                     text(format!(
                         "{} | {}",
                         weather_type,
@@ -496,6 +544,8 @@ impl Ice {
                 button("Местоположение").on_press(Message::LocationSelectorPressed),
                 button("Обновить").on_press(Message::RefreshButtonPressed),
                 horizontal_space(),
+                text(format!("{}", &self.ctime.format("%d.%m.%y %H:%M"))).size(25),
+                horizontal_space(),
                 button(image("res/icons/about.png").width(20).height(20))
                     .on_press(Message::AboutButtonPressed)
                     .style(button::text),
@@ -506,6 +556,7 @@ impl Ice {
                     .on_press(Message::PoweroffButtonPressed)
                     .style(button::text),
             ]
+            .align_y(Center)
             .spacing(5),
         )
         .style(container::rounded_box)
@@ -544,6 +595,11 @@ impl Ice {
                     Message::SettingsButtonPressed,
                 ),
                 ModalWindow::PowerOff => self.poweroff(weather_area),
+                ModalWindow::Error => modal(
+                    weather_area,
+                    self.error_win(),
+                    Message::CloseErrorWinButtonPressed,
+                ),
             }
         } else {
             weather_area.into()
