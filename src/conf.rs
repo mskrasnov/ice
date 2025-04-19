@@ -1,6 +1,6 @@
 //! Configuration parser for Ice
 
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
 use std::{fs, path::Path};
 use toml;
@@ -57,15 +57,24 @@ impl ToString for Location {
 
 impl Conf {
     pub fn parse<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let content = fs::read_to_string(&path)?;
-        let data = toml::from_str(&content)?;
+        let content = fs::read_to_string(&path)
+            .map_err(|err| anyhow!("Ошибка чтения конфигурационного файла. Этот файл существует и вы имеете доступ к нему?\nКод ошибки: {err}"))?;
+        let data = toml::from_str(&content).map_err(|err| {
+            anyhow!("Ошибка получения данных из конфига. Он точно корректен?\nКод ошибки: {err}")
+        })?;
 
         Ok(data)
     }
 
     pub fn write<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        let content = toml::to_string(&self)?;
-        fs::write(&path, content)?;
+        let content = toml::to_string(&self).map_err(|err| {
+            anyhow!("Ошибка получения данных из конфига. Он точно корректен?\nКод ошибки: {err}")
+        })?;
+        fs::write(&path, content).map_err(|err| {
+            anyhow!(
+                "Ошибка записи конфигурационного файла. Вы имеете доступ к нему?\nКод ошибки: {err}"
+            )
+        })?;
 
         Ok(())
     }

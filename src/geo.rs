@@ -2,7 +2,7 @@
 
 use std::fmt::Display;
 
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -90,9 +90,11 @@ impl LocationName {
                 ("appid", api_key.to_string()),
             ],
         ))
-        .await?
+        .await
+        .map_err(|err| anyhow!("Ошибка получения данных с сервера. Проверьте подключение к сети и корректность запроса\nКод ошибки: {err}"))?
         .json::<Value>()
-        .await?;
+        .await
+        .map_err(|err| anyhow!("Ошибка получения JSON с сервера:\n{err}"))?;
 
         Ok(query)
     }
@@ -100,7 +102,8 @@ impl LocationName {
 
 impl Location {
     pub fn from_json_value(value: Value) -> Result<Self> {
-        let data = serde_json::from_value(value)?;
+        let data =
+            serde_json::from_value(value).map_err(|err| anyhow!("Ошибка разбора JSON: {err}"))?;
 
         Ok(data)
     }
@@ -111,7 +114,8 @@ pub struct LocationData(pub Vec<LocationInfo>);
 
 impl LocationData {
     pub fn from_json_value(value: Value) -> Result<Self> {
-        let data = serde_json::from_value(value)?;
+        let data =
+            serde_json::from_value(value).map_err(|err| anyhow!("Ошибка разбора JSON: {err}"))?;
 
         Ok(data)
     }

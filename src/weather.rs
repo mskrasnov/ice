@@ -75,10 +75,10 @@ impl<'a> Weather<'a> {
             ],
         ))
         .await
-        .map_err(|_| anyhow!("Failed to perform GET-request"))?
+        .map_err(|err| anyhow!("Ошибка получения данных с сервера. Проверьте подключение к сети и корректность запроса\nКод ошибки: {err}"))?
         .json::<Value>()
         .await
-        .map_err(|err| anyhow!("Failed to get JSON object:\n{err}"))?;
+        .map_err(|err| anyhow!("Ошибка получения JSON с сервера:\n{err}"))?;
 
         Ok(query)
     }
@@ -94,7 +94,7 @@ pub struct WeatherData {
     pub dt: i64,
     // pub id: i32,
     pub main: Main,
-    // pub name: String,
+    pub name: String,
     pub sys: Sys,
     pub timezone: i32,
     // pub visibility: u32,
@@ -104,7 +104,8 @@ pub struct WeatherData {
 
 impl WeatherData {
     pub fn from_json_value(value: Value) -> Result<Self> {
-        let data = serde_json::from_value(value)?;
+        let data =
+            serde_json::from_value(value).map_err(|err| anyhow!("Ошибка разбора JSON: {err}"))?;
 
         Ok(data)
     }
