@@ -15,8 +15,8 @@ opt-level = "s"
 [dependencies]
 anyhow = "1.0.97"
 chrono = "0.4.40"
-futures = "0.3.31"
-futures-util = "0.3.31"
+# futures = "0.3.31"
+# futures-util = "0.3.31"
 iced = { version = "0.13.1", default-features = false, features = ["image", "tiny-skia", "tokio"] }
 # iced = { version = "0.13.1", features = ["image", "svg", "tokio"] }
 reqwest = { version = "0.12.12", default-features = false, features = ["json", "rustls-tls"] }
