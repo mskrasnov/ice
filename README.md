@@ -2,7 +2,7 @@
 
 ice is simple and stupid full-screen program to get information about weather in the specified location. Originally written for my OrangePi 3 LTS SBC.
 
-![](assets/ice.png)
+<img src="assets/ice.png" width="800"></img>
 
 ## Functions
 
@@ -24,6 +24,7 @@ ice is simple and stupid full-screen program to get information about weather in
   - `git`, `musl`/`glibc`, `cargo`, `rustc`, `gcc`;
 - **Run:**
   - `rust-stdlib`, Xorg/Wayland;
+  - `libxkb`, `libxkb-common` (and it's Rust bindings)
 
 ### Local build
 
