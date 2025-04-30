@@ -6,9 +6,11 @@
   [![License MIT](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 </div>
 
+> **NOTE:** This version is still under development, some (many) features may be missing.
+
 ## 🤔 What is this?
 
-![](assets/screen.png)
+![](assets/ice.png)
 
 The modern application for get weather forecasts (current, daily). Written for Orange/Raspberry Pi and Armbian OS.
 
