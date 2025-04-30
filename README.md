@@ -3,7 +3,7 @@
   <h1>❄️ Ice</h1>
   <h3>Weather Monitor for Embedded Systems | Погодный монитор для встраиваемых систем</h3>
 
-  [![Rust Version](https://img.shields.io/badge/Rust-1.75%2B-orange?logo=rust)](https://www.rust-lang.org/)
+  [![Rust Version](https://img.shields.io/badge/Rust-1.85%2B-orange?logo=rust)](https://www.rust-lang.org/)
   [![License MIT](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 </div>
 
