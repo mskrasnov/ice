@@ -1,5 +1,4 @@
 <div align="center">
-  <!-- <img src="docs/logo.png" width="200" alt="Ice Logo"> -->
   <h1>❄️ Ice</h1>
   <h3>Weather Monitor for Embedded Systems | Погодный монитор для встраиваемых систем</h3>
 
@@ -9,7 +8,7 @@
 
 ## 🤔 What is this?
 
-![](assets/screen.gif)
+![](assets/screen.png)
 
 The modern application for get weather forecasts (current, daily). Written for Orange/Raspberry Pi and Armbian OS.
 
