@@ -2,8 +2,12 @@
 name = "ice"
 version = "0.1.0"
 edition = "2024"
-description = "Very simple and stupid environment for ArmbianOS"
+description = "Simple weather program for Armbian"
+authors = ["Michail Krasnov <michail383krasnov@mail.ru>"]
 license = "MIT"
+repository = "https://github.com/mskrasnov/ice"
+readme = "README.md"
+keywords = ["weather", "iced", "embedded", "arm"]
 
 [profile.release]
 lto = true
@@ -12,15 +16,30 @@ debug = false
 panic = "abort"
 opt-level = "s"
 
+[package.metadata.deb]
+maintainer = "Michail Krasnov <michail383krasnov@mail.ru>"
+copyright = "2025, Michail Krasnov <michail383krasnov@mail.ru>"
+license-file = ["LICENSE", "4"]
+depends = "$auto"
+section = "utility"
+priority = "optional"
+assets = [
+    ["target/release/ice", "usr/bin/", "755"],
+    ["assets/logo.svg", "usr/share/icons/hicolor/scalable/apps/ice.svg", "644"],
+    ["assets/ice.desktop", "usr/share/applications/", "644"],
+    ["res/*", "usr/share/ice/", "644"],
+]
+
 [dependencies]
-anyhow = "1.0.97"
+anyhow = "1.0.98"
 chrono = "0.4.40"
-# futures = "0.3.31"
-# futures-util = "0.3.31"
-iced = { version = "0.13.1", default-features = false, features = ["image", "tiny-skia", "tokio"] }
-# iced = { version = "0.13.1", features = ["image", "svg", "tokio"] }
-reqwest = { version = "0.12.12", default-features = false, features = ["json", "rustls-tls"] }
-serde = { version = "1.0.218", features = ["derive"] }
-serde_json = "1.0.140"
-tokio = { version = "1.44.0", features = ["full"] }
-toml = "0.8.20"
+iced = { version = "0.13.1", default-features = false, features = [
+    "image",
+    "tiny-skia",
+    "tokio"
+] }
+reqwest = { version = "0.12.15", features = ["json"] }
+serde = { version = "1.0.219", features = ["derive"] }
+tokio = { version = "1.44.2", features = ["full"] }
+toml = "0.8.21"
+zbus = "5.5.0"

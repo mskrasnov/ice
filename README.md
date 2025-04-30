@@ -1,49 +1,85 @@
-# ice
+<div align="center">
+  <!-- <img src="docs/logo.png" width="200" alt="Ice Logo"> -->
+  <h1>❄️ Ice</h1>
+  <h3>Weather Monitor for Embedded Systems | Погодный монитор для встраиваемых систем</h3>
 
-ice is simple and stupid full-screen program to get information about weather in the specified location. Originally written for my OrangePi 3 LTS SBC.
+  [![Rust Version](https://img.shields.io/badge/Rust-1.75%2B-orange?logo=rust)](https://www.rust-lang.org/)
+  [![License MIT](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
+</div>
 
-<img src="assets/ice.png" width="800"></img>
+## 🤔 What is this?
 
-## Functions
+![](assets/screen.gif)
 
-1. Display information about weather in the specified location.
-2. ...
-3. That's all.
+The modern application for get weather forecasts (current, daily). Written for Orange/Raspberry Pi and Armbian OS.
 
-## Technology stack
+## ✨ Features
 
-- **OS:** Linux;
-- **Programming language:** Rust;
-- **Interface:** Iced;
+- **Current weather:** temperature, pressure and wind;
+- **Daily forecast** in the compact mode;
+- **System monitoring:** CPU load, RAM usage and disk space;
+- **Wi-Fi:** simple and quick Wi-Fi scanning and connecting;
+- **Location autodetect** via IP/GPS;
+- **Touch-friendly UI** for 800×480 displays
 
-## Build and install
+## ️🛠️ Installation
 
-### Dependencies
-
-- **Build:**
-  - `git`, `musl`/`glibc`, `cargo`, `rustc`, `gcc`;
-- **Run:**
-  - `rust-stdlib`, Xorg/Wayland;
-  - `libxkb`, `libxkb-common` (and it's Rust bindings)
-
-### Local build
+You can install Ice from sources:
 
 ```bash
-git clone https://mskrasnov/ice
+git clone https://github.com/mskrasnov/ice
 cd ice
 
-cargo build --release
-sudo cp -v ./target/release/ice /usr/bin/
+python      ./build.py build aarch64-unknown-linux-gnu
+sudo python ./build.py install
+
+sudo systemctl enable ice.service
+sudo systemctl start  ice
 ```
 
-> **Note:** you can use preinstalled display manager (e.g. LightDM, SDDM, GDM, etc.).
+... or install pre-built `*.deb`-package from "Releases" page:
 
-## License
+- [Releases](https://github.com/mskrasnov/ice/releases)
 
-ice is distributed under the MIT license.
+## 🎨 Interface
 
-## Support me
+- **Base screen resolution:** 800x480
+- **Controls:** optimized for sensor screens
+  1. Update
+  2. Location
+  3. Settings
+  4. About program
+  5. Exit/shutdown
 
-You can support the developer of this program by creating issue or pull request. Also if you from Russia you can send me donation:
+## 🤖 Technology stack
+
+- **OS:** Armbian Linux (ARM v8.1-A)
+- **Language:** Rust
+- **i18n support:** `fluent`
+- **Interface:** [iced](https://iced.rs)
+- **Network stack:** NetworkManager
+- **Hardware:** Orange/Raspberry Pi SBC
+
+## 🤝 Contributing
+
+Bug reports and PR are welcome!
+
+1. Fork this repo: `git clone https://github.com/mskrasnov/ice`
+2. Go to the cloned directory: `cd ice`
+3. Create new branch:
+  - `git branch feature/<SOME NEW FEATURE>` **or** `git branch fix/<SOME BUGFIX>`
+  - `git checkout <CREATED BRANCH NAME>`
+4. some changes...
+5. Push changes: `git push origin <CREATED BRANCH NAME>`
+6. Create pull request in the GitHub interface
+7. Thank you!
+
+## 💸 Support me
+
+If you from Russia you can send me donation:
 
 > 2202206252335406 (Михаил Сергеевич)
+
+## 📜 License
+
+[MIT](LICENSE) © 2025 Michail Krasnov
