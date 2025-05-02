@@ -16,7 +16,7 @@ pub mod view;
 
 use std::{fmt::Debug, time::Duration};
 
-use chrono::Timelike;
+use chrono::{DateTime, Timelike};
 use iced::{
     Alignment::Center,
     Element, Subscription, Task, Theme, time,
@@ -24,10 +24,11 @@ use iced::{
 };
 
 use crate::{
-    api::{current::Current, daily::Daily, geocoding},
+    api::{current::Current, daily::Daily, floor, geocoding},
     app::location,
     config::Config,
     consts::CONF_PATH,
+    units::Variant,
 };
 
 pub fn ui() -> iced::Result {
@@ -69,6 +70,7 @@ pub enum Message {
      * Some service actions *
      ************************/
     UpdateCTime,
+    UpdateUptime,
 
     /*****************
      * Button clicks *
@@ -94,14 +96,22 @@ impl Default for Ice {
 
 impl Ice {
     const TOP_PANEL_TEXT_SIZE: u16 = 25;
+    const TEXT_SIZE: u16 = 20;
 
     pub fn theme(&self) -> Theme {
-        Theme::GruvboxDark
+        let h = self.ctime.hour();
+        if h >= 6 && h < 22 {
+            Theme::GruvboxLight
+        } else {
+            Theme::GruvboxDark
+        }
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
-        let mut scripts =
-            vec![time::every(Duration::from_millis(500)).map(|_| Message::UpdateCTime)];
+        let mut scripts = vec![
+            time::every(Duration::from_millis(500)).map(|_| Message::UpdateCTime),
+            time::every(Duration::from_secs(1)).map(|_| Message::UpdateUptime),
+        ];
 
         if self.autodetected_location.is_none() {
             scripts
@@ -142,20 +152,23 @@ impl Ice {
 
                 Task::perform(
                     async move {
-                        let loc = location.unwrap();
-                        let current = Current::get(
-                            appid,
-                            crate::api::Location {
-                                lat: loc.lat,
-                                lon: loc.lon,
-                            },
-                            units,
-                        )
-                        .await;
+                        if let Some(loc) = location {
+                            let current = Current::get(
+                                appid,
+                                crate::api::Location {
+                                    lat: loc.lat,
+                                    lon: loc.lon,
+                                },
+                                units,
+                            )
+                            .await;
 
-                        match current {
-                            Ok(current) => (Some(current), None),
-                            Err(why) => (None, Some(why.to_string())),
+                            match current {
+                                Ok(current) => (Some(current), None),
+                                Err(why) => (None, Some(why.to_string())),
+                            }
+                        } else {
+                            (None, Some("Неизвестное местоположение".to_string()))
                         }
                     },
                     |val| Message::CurrentWeatherReceived(val),
@@ -173,52 +186,93 @@ impl Ice {
                 self.ctime = chrono::offset::Local::now();
                 Task::none()
             }
+            Message::UpdateUptime => {
+                self.uptime += 1;
+                Task::none()
+            }
             _ => Task::none(),
         }
     }
 
     pub fn view(&self) -> Element<Message> {
+        let image = container(center(
+            column![
+                text(match &self.current_weather {
+                    Some(current) => current.weather[0].get_descr(),
+                    None => "Загружаем инф-цию...",
+                })
+                .size(Self::TEXT_SIZE),
+                image(format!(
+                    "./res/icons/{}.png",
+                    match &self.current_weather {
+                        Some(current) => current.weather[0].get_icon(self.ctime),
+                        None => "default",
+                    }
+                )),
+                text(format!(
+                    "{}{}",
+                    floor(match &self.current_weather {
+                        Some(current) => current.main.feels_like,
+                        None => 0.,
+                    }),
+                    Variant::Degrees.to_str(self.conf.units),
+                ))
+                .size(35)
+            ]
+            .spacing(10)
+            .align_x(Center),
+        ))
+        .padding(10)
+        .width(260);
+
         let top_panel = row![
             button(text("Обновить").size(Self::TOP_PANEL_TEXT_SIZE))
                 .on_press(Message::RefreshButtonPressed),
-            text("Dzerzhinsk, Russia").size(Self::TOP_PANEL_TEXT_SIZE),
+            text(match &self.current_weather {
+                Some(current) => format!("{} ({})", &current.name, &current.sys.country,),
+                None => "Загружаем информацию...".to_string(),
+            })
+            .size(Self::TOP_PANEL_TEXT_SIZE),
             horizontal_space(),
             container(
-                text(format!(
-                    "{}:{}:{}{}",
-                    self.ctime.hour(),
-                    self.ctime.minute(),
-                    if self.ctime.second() < 10 { "0" } else { "" },
-                    self.ctime.second(),
-                ))
+                text(
+                    crate::time::Time::new(&self.ctime)
+                        .set_display_mode(crate::time::DisplayMode::TimeDate)
+                        .to_string()
+                )
                 .size(Self::TOP_PANEL_TEXT_SIZE),
             )
             .padding(5)
             .style(container::rounded_box),
         ]
         .align_y(Center)
-        .spacing(10);
-
-        let image = image(format!(
-            "./res/icons/{}.png",
-            match &self.current_weather {
-                Some(current) => current.weather[0].get_icon(self.ctime),
-                None => "default",
-            }
-        ));
+        .spacing(10)
+        .padding(10);
 
         container(column![
             top_panel,
             row![
                 image,
                 center(scrollable(
-                    text(format!("{:#?}", self.current_weather)).size(35)
+                    text("Тут должен быть почасовой прогноз").size(25),
                 ))
             ]
-            .spacing(20)
-            .align_y(Center)
+            .spacing(Self::TEXT_SIZE)
+            .align_y(Center),
+            row![
+                text("Информация предоставлена OpenWeatherMap").size(12),
+                horizontal_space(),
+                text(format!(
+                    "Время работы: {}",
+                    crate::time::Time::new(
+                        &DateTime::from_timestamp(self.uptime.into(), 0).unwrap()
+                    )
+                    .set_display_mode(crate::time::DisplayMode::TimeWithSeconds)
+                ))
+                .size(12),
+            ]
+            .padding(10),
         ])
-        .padding([10, 10])
         .into()
     }
 }
