@@ -28,6 +28,10 @@ where
     url
 }
 
+pub fn floor(num: f32) -> i32 {
+    (num + 0.5) as i32
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone, Copy)]
 pub struct Location {
     pub lat: f32,

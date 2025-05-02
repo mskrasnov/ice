@@ -5,7 +5,7 @@ use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize, Serialize};
 
 use super::{API, Location, Main, WeatherMeta, Wind};
-use crate::config::Units;
+use crate::units::Units;
 
 /// The URL that is used to make GET requests to the API
 pub const API_URL: &str = "https://api.openweathermap.org/data/2.5/weather?";
@@ -50,6 +50,7 @@ impl Current {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Sys {
     pub country: String,
+    pub state: Option<String>,
     pub sunrise: i64,
     pub sunset: i64,
 }

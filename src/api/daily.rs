@@ -5,7 +5,7 @@ use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize, Serialize};
 
 use super::{API, Location, Main, WeatherMeta, Wind};
-use crate::config::Units;
+use crate::units::Units;
 
 /// The URL that is used to make GET requests to the API
 pub const API_URL: &str = "https://api.openweathermap.org/data/2.5/forecast?";
